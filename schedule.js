@@ -1,95 +1,95 @@
-let scheduleDays = [];
+let sd = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadSchedule();
+  loadSched();
   const btn = document.getElementById('regenerateBtn');
   if (btn) btn.addEventListener('click', async () => {
     btn.disabled = true;
     try {
       const res = await fetch('/api/regenerate');
-      if (res.ok) await loadSchedule();
+      if (res.ok) await loadSched();
     } finally {
       btn.disabled = false;
       btn.textContent = 'Regenerate';
     }
   });
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      const q = (searchInput.value || '').trim().toLowerCase();
+  const inp = document.getElementById('searchInput');
+  if (inp) {
+    inp.addEventListener('input', () => {
+      const q = (inp.value || '').trim().toLowerCase();
       document.querySelectorAll('.schedule-row').forEach((tr) => {
-        const name = (tr.getAttribute('data-person-name') || '').toLowerCase();
-        tr.classList.toggle('tr-row-hidden', q.length > 0 && !name.includes(q));
+        const nm = (tr.getAttribute('data-person-name') || '').toLowerCase();
+        tr.classList.toggle('tr-row-hidden', q.length > 0 && !nm.includes(q));
       });
     });
   }
   document.getElementById('scheduleContainer').addEventListener('click', (e) => {
     const cell = e.target.closest('td[data-role]');
     if (!cell) return;
-    const role = cell.getAttribute('data-role');
-    const dayIndex = parseInt(cell.getAttribute('data-day-index'), 10);
-    if (role && role !== 'Open' && !isNaN(dayIndex) && scheduleDays[dayIndex]) {
-      showRolePanel(scheduleDays[dayIndex], role);
+    const rl = cell.getAttribute('data-role');
+    const dIdx = parseInt(cell.getAttribute('data-day-index'), 10);
+    if (rl && rl !== 'Open' && !isNaN(dIdx) && sd[dIdx]) {
+      showRolePnl(sd[dIdx], rl);
     }
   });
   const closeBtn = document.querySelector('.role-panel-close');
-  const panel = document.getElementById('rolePanel');
-  if (closeBtn && panel) {
-    closeBtn.addEventListener('click', () => { panel.classList.add('hidden'); panel.setAttribute('aria-hidden', 'true'); });
-    panel.addEventListener('click', (e) => { if (e.target === panel) { panel.classList.add('hidden'); panel.setAttribute('aria-hidden', 'true'); } });
+  const pnl = document.getElementById('rolePanel');
+  if (closeBtn && pnl) {
+    closeBtn.addEventListener('click', () => { pnl.classList.add('hidden'); pnl.setAttribute('aria-hidden', 'true'); });
+    pnl.addEventListener('click', (e) => { if (e.target === pnl) { pnl.classList.add('hidden'); pnl.setAttribute('aria-hidden', 'true'); } });
   }
 });
 
-function showRolePanel(day, role) {
+function showRolePnl(day, rl) {
   const titleEl = document.getElementById('rolePanelTitle');
   const bodyEl = document.getElementById('rolePanelBody');
   if (!titleEl || !bodyEl) return;
-  titleEl.textContent = role;
-  const roleSlug = role.toLowerCase().replace(/[^a-z]/g, '');
-  const panel = document.getElementById('rolePanel');
-  panel.setAttribute('data-role-slug', roleSlug);
-  const blocks = day.timeBlocks || [];
-  const people = day.people || [];
-  let html = '<p class="role-panel-subtitle">' + escapeHtml(day.label) + ' — who has this role each block</p>';
+  titleEl.textContent = rl;
+  const slug = rl.toLowerCase().replace(/[^a-z]/g, '');
+  const pnl = document.getElementById('rolePanel');
+  pnl.setAttribute('data-role-slug', slug);
+  const blks = day.timeBlocks || [];
+  const ppl = day.people || [];
+  let html = '<p class="role-panel-subtitle">' + escH(day.label) + ' — who has this role each block</p>';
   html += '<table class="role-panel-table"><thead><tr><th>Time</th><th>People</th></tr></thead><tbody>';
-  blocks.forEach((_, i) => {
-    const assigned = people.filter((p) => (p.schedule || [])[i] === role);
-    const time = escapeHtml(blocks[i]);
-    let peopleCell = '';
-    if (assigned.length) {
-      peopleCell = '<div class="role-panel-chips">' +
-        assigned.map((p) => '<span class="role-panel-chip">' + escapeHtml(p.name) + '</span>').join('') +
+  blks.forEach((_, i) => {
+    const asg = ppl.filter((p) => (p.schedule || [])[i] === rl);
+    const tm = escH(blks[i]);
+    let cell = '';
+    if (asg.length) {
+      cell = '<div class="role-panel-chips">' +
+        asg.map((p) => '<span class="role-panel-chip">' + escH(p.name) + '</span>').join('') +
         '</div>';
     } else {
-      peopleCell = '<span class="role-panel-empty">—</span>';
+      cell = '<span class="role-panel-empty">—</span>';
     }
-    html += '<tr><td class="role-panel-time">' + time + '</td><td class="role-panel-people">' + peopleCell + '</td></tr>';
+    html += '<tr><td class="role-panel-time">' + tm + '</td><td class="role-panel-people">' + cell + '</td></tr>';
   });
   html += '</tbody></table>';
   bodyEl.innerHTML = html;
-  panel.classList.remove('hidden');
-  panel.setAttribute('aria-hidden', 'false');
+  pnl.classList.remove('hidden');
+  pnl.setAttribute('aria-hidden', 'false');
 }
 
-function escapeHtml(s) {
+function escH(s) {
   const div = document.createElement('div');
   div.textContent = s;
   return div.innerHTML;
 }
 
-async function loadSchedule() {
-  const container = document.getElementById('scheduleContainer');
-  const timeoutMs = 20000;
+async function loadSched() {
+  const ctr = document.getElementById('scheduleContainer');
+  const to = 20000;
   try {
     let data = null;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), to);
     try {
-      const res = await fetch('/api/schedule', { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const res = await fetch('/api/schedule', { signal: ctrl.signal });
+      clearTimeout(tid);
       if (res.ok) data = await res.json();
     } catch (_) {
-      clearTimeout(timeoutId);
+      clearTimeout(tid);
     }
     if (!data) {
       const staticRes = await fetch('schedule.json?t=' + Date.now(), { cache: 'no-store' });
@@ -98,168 +98,167 @@ async function loadSchedule() {
     if (!data) throw new Error('Failed to load');
     const days = data.days || (data.schedule && data.schedule.days) || [];
     if (!days.length) {
-      container.innerHTML = '<div class="empty">No schedule. Check CSV path in config and regenerate.</div>';
+      ctr.innerHTML = '<div class="empty">No schedule. Check CSV path in config and regenerate.</div>';
       return;
     }
-    scheduleDays = days;
-    const blockMins = Number(data.blockDurationMinutes) || 30;
-    const hoursPerBlock = blockMins / 60;
+    sd = days;
+    const blkMins = Number(data.blockDurationMinutes) || 30;
+    const hrPerBlk = blkMins / 60;
+    // static host has no api
     if (window.location.hostname.includes('github.io')) {
       const btn = document.getElementById('regenerateBtn');
       if (btn) btn.style.display = 'none';
     }
-    container.innerHTML = '';
-    days.forEach((day, dayIndex) => {
-      const realDayIndex = dayIndex;
-      const section = document.createElement('section');
-      section.className = 'day-section';
-      section.setAttribute('data-day-index', String(realDayIndex));
+    ctr.innerHTML = '';
+    days.forEach((day, dayIdx) => {
+      const realIdx = dayIdx;
+      const sec = document.createElement('section');
+      sec.className = 'day-section';
+      sec.setAttribute('data-day-index', String(realIdx));
       const title = document.createElement('h2');
       title.className = 'day-title';
       title.textContent = day.label;
-      section.appendChild(title);
-      const table = document.createElement('table');
-      table.className = 'schedule-table';
+      sec.appendChild(title);
+      const tbl = document.createElement('table');
+      tbl.className = 'schedule-table';
       const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      const thName = document.createElement('th');
-      thName.className = 'col-name';
-      thName.textContent = 'Name';
-      headerRow.appendChild(thName);
-      (day.timeBlocks || []).forEach((block) => {
+      const hrow = document.createElement('tr');
+      const thNm = document.createElement('th');
+      thNm.className = 'col-name';
+      thNm.textContent = 'Name';
+      hrow.appendChild(thNm);
+      (day.timeBlocks || []).forEach((blk) => {
         const th = document.createElement('th');
         th.className = 'col-time';
-        th.textContent = block;
-        headerRow.appendChild(th);
+        th.textContent = blk;
+        hrow.appendChild(th);
       });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
+      thead.appendChild(hrow);
+      tbl.appendChild(thead);
       const tbody = document.createElement('tbody');
-      (day.people || []).forEach((person) => {
+      (day.people || []).forEach((pers) => {
         const tr = document.createElement('tr');
         tr.className = 'schedule-row';
-        tr.setAttribute('data-person-name', person.name || '');
-        const tdName = document.createElement('td');
-        tdName.className = 'col-name';
-        tdName.textContent = person.name;
-        tr.appendChild(tdName);
-        (person.schedule || []).forEach((status, timeIdx) => {
+        tr.setAttribute('data-person-name', pers.name || '');
+        const tdNm = document.createElement('td');
+        tdNm.className = 'col-name';
+        tdNm.textContent = pers.name;
+        tr.appendChild(tdNm);
+        (pers.schedule || []).forEach((st, ti) => {
           const td = document.createElement('td');
-          td.textContent = status;
-          td.className = 'cell cell--' + (status || 'open').toLowerCase().replace(/[^a-z]/g, '');
-          if (status && status !== 'Open') {
-            td.setAttribute('data-role', status);
-            td.setAttribute('data-day-index', String(realDayIndex));
+          td.textContent = st;
+          td.className = 'cell cell--' + (st || 'open').toLowerCase().replace(/[^a-z]/g, '');
+          if (st && st !== 'Open') {
+            td.setAttribute('data-role', st);
+            td.setAttribute('data-day-index', String(realIdx));
             td.style.cursor = 'pointer';
-            td.title = 'Click to see who has ' + status + ' per time';
+            td.title = 'Click to see who has ' + st + ' per time';
           }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
       });
-      table.appendChild(tbody);
-      const tableWrap = document.createElement('div');
-      tableWrap.className = 'table-scroll';
-      tableWrap.appendChild(table);
-      section.appendChild(tableWrap);
+      tbl.appendChild(tbody);
+      const wrap = document.createElement('div');
+      wrap.className = 'table-scroll';
+      wrap.appendChild(tbl);
+      sec.appendChild(wrap);
 
-      const blocks = day.timeBlocks || [];
-      const countsPerBlock = blocks.map((_, timeIdx) => {
-        const counts = {};
+      const blks = day.timeBlocks || [];
+      const cntPerBlk = blks.map((_, ti) => {
+        const cnt = {};
         (day.people || []).forEach((p) => {
-          const s = (p.schedule || [])[timeIdx] || 'Open';
-          counts[s] = (counts[s] || 0) + 1;
+          const s = (p.schedule || [])[ti] || 'Open';
+          cnt[s] = (cnt[s] || 0) + 1;
         });
-        return counts;
+        return cnt;
       });
-      const allRoles = [...new Set(countsPerBlock.flatMap((c) => Object.keys(c)))].sort();
-      const summaryTable = document.createElement('table');
-      summaryTable.className = 'schedule-table summary-table';
-      const summaryThead = document.createElement('thead');
-      const summaryHeaderRow = document.createElement('tr');
-      const summaryThName = document.createElement('th');
-      summaryThName.className = 'col-name';
-      summaryThName.textContent = 'Count by role';
-      summaryHeaderRow.appendChild(summaryThName);
-      blocks.forEach((block) => {
+      const allRl = [...new Set(cntPerBlk.flatMap((c) => Object.keys(c)))].sort();
+      const sumTbl = document.createElement('table');
+      sumTbl.className = 'schedule-table summary-table';
+      const sumThead = document.createElement('thead');
+      const sumHrow = document.createElement('tr');
+      const sumThNm = document.createElement('th');
+      sumThNm.className = 'col-name';
+      sumThNm.textContent = 'Count by role';
+      sumHrow.appendChild(sumThNm);
+      blks.forEach((blk) => {
         const th = document.createElement('th');
         th.className = 'col-time';
-        th.textContent = block;
-        summaryHeaderRow.appendChild(th);
+        th.textContent = blk;
+        sumHrow.appendChild(th);
       });
-      summaryThead.appendChild(summaryHeaderRow);
-      summaryTable.appendChild(summaryThead);
-      const summaryTbody = document.createElement('tbody');
-      allRoles.forEach((role) => {
+      sumThead.appendChild(sumHrow);
+      sumTbl.appendChild(sumThead);
+      const sumTbody = document.createElement('tbody');
+      allRl.forEach((rl) => {
         const tr = document.createElement('tr');
-        const tdLabel = document.createElement('td');
-        tdLabel.className = 'col-name';
-        tdLabel.textContent = role;
-        tdLabel.setAttribute('data-role', role);
-        tdLabel.setAttribute('data-day-index', String(realDayIndex));
-        tdLabel.style.cursor = 'pointer';
-        tdLabel.title = 'Click to see who has ' + role + ' per time';
-        tr.appendChild(tdLabel);
-        countsPerBlock.forEach((counts) => {
+        const tdLbl = document.createElement('td');
+        tdLbl.className = 'col-name';
+        tdLbl.textContent = rl;
+        tdLbl.setAttribute('data-role', rl);
+        tdLbl.setAttribute('data-day-index', String(realIdx));
+        tdLbl.style.cursor = 'pointer';
+        tdLbl.title = 'Click to see who has ' + rl + ' per time';
+        tr.appendChild(tdLbl);
+        cntPerBlk.forEach((cnt) => {
           const td = document.createElement('td');
-          td.textContent = counts[role] || 0;
-          td.className = 'cell cell--' + role.toLowerCase().replace(/[^a-z]/g, '');
+          td.textContent = cnt[rl] || 0;
+          td.className = 'cell cell--' + rl.toLowerCase().replace(/[^a-z]/g, '');
           tr.appendChild(td);
         });
-        summaryTbody.appendChild(tr);
+        sumTbody.appendChild(tr);
       });
-      summaryTable.appendChild(summaryTbody);
-      const summaryTitle = document.createElement('h3');
-      summaryTitle.className = 'summary-title';
-      summaryTitle.textContent = 'Count per half-hour';
-      section.appendChild(summaryTitle);
-      const summaryWrap = document.createElement('div');
-      summaryWrap.className = 'table-scroll';
-      summaryWrap.appendChild(summaryTable);
-      section.appendChild(summaryWrap);
+      sumTbl.appendChild(sumTbody);
+      const sumTitle = document.createElement('h3');
+      sumTitle.className = 'summary-title';
+      sumTitle.textContent = 'Count per half-hour';
+      sec.appendChild(sumTitle);
+      const sumWrap = document.createElement('div');
+      sumWrap.className = 'table-scroll';
+      sumWrap.appendChild(sumTbl);
+      sec.appendChild(sumWrap);
 
       if (day.scoutCheck && day.scoutCheck.length > 0) {
-        const checkTitle = document.createElement('h3');
-        checkTitle.className = 'summary-title';
-        checkTitle.textContent = 'Scouting check';
-        section.appendChild(checkTitle);
-        const checkTable = document.createElement('table');
-        checkTable.className = 'schedule-table summary-table scout-check-table';
-        const checkThead = document.createElement('thead');
-        checkThead.innerHTML = '<tr><th class="col-name">Name</th><th>Scouting hours</th><th>Hours in pits</th><th>Status</th></tr>';
-        checkTable.appendChild(checkThead);
-        const checkTbody = document.createElement('tbody');
-        const pitRoles = ['Pits', 'Ctrls Pit', 'Pit Lead', 'Mech Pit'];
+        const chkTtl = document.createElement('h3');
+        chkTtl.className = 'summary-title';
+        chkTtl.textContent = 'Scouting check';
+        sec.appendChild(chkTtl);
+        const chkTbl = document.createElement('table');
+        chkTbl.className = 'schedule-table summary-table scout-check-table';
+        chkTbl.innerHTML = '<thead><tr><th class="col-name">Name</th><th>Scouting hours</th><th>Hours in pits</th><th>Status</th></tr></thead>';
+        const chkTbody = document.createElement('tbody');
+        const pitRl = ['Pits', 'Ctrls Pit', 'Pit Lead', 'Mech Pit'];
         day.scoutCheck.forEach((row) => {
-          const person = (day.people || []).find((p) => p.name === row.name);
-          const pitBlocks = person ? (person.schedule || []).filter((s) => pitRoles.includes(s)).length : 0;
-          const hoursInPits = (pitBlocks * hoursPerBlock).toFixed(1);
+          const pers = (day.people || []).find((p) => p.name === row.name);
+          const pitBlks = pers ? (pers.schedule || []).filter((s) => pitRl.includes(s)).length : 0;
+          const hrsPit = (pitBlks * hrPerBlk).toFixed(1);
           const tr = document.createElement('tr');
           tr.className = 'scout-check--' + row.status;
           tr.innerHTML =
             '<td class="col-name">' +
-            escapeHtml(row.name) +
+            escH(row.name) +
             '</td><td>' +
-            (row.scoutingBlocks * hoursPerBlock).toFixed(1) + ' hr</td><td>' +
-            hoursInPits + ' hr</td><td>' +
-            escapeHtml(row.status === 'exempt' ? 'Exempt' : row.status === 'none' ? 'No scouting' : row.status === 'low' ? 'Low' : 'OK') +
+            (row.scoutingBlocks * hrPerBlk).toFixed(1) + ' hr</td><td>' +
+            hrsPit + ' hr</td><td>' +
+            escH(row.status === 'exempt' ? 'Exempt' : row.status === 'none' ? 'No scouting' : row.status === 'low' ? 'Low' : 'OK') +
             '</td>';
-          checkTbody.appendChild(tr);
+          chkTbody.appendChild(tr);
         });
-        checkTable.appendChild(checkTbody);
-        const checkWrap = document.createElement('div');
-        checkWrap.className = 'table-scroll';
-        checkWrap.appendChild(checkTable);
-        section.appendChild(checkWrap);
+        chkTbl.appendChild(chkTbody);
+        const chkWrap = document.createElement('div');
+        chkWrap.className = 'table-scroll';
+        chkWrap.appendChild(chkTbl);
+        sec.appendChild(chkWrap);
       }
 
-      container.appendChild(section);
+      ctr.appendChild(sec);
     });
   } catch (e) {
-    const isTimeout = e.name === 'AbortError';
-    const msg = isTimeout
+    const isTo = e.name === 'AbortError';
+    const msg = isTo
       ? 'Schedule is taking a while. If the server is still building, try refreshing in a moment.'
-      : 'Error loading schedule: ' + escapeHtml(e.message);
-    container.innerHTML = '<div class="empty">' + msg + '</div>';
+      : 'Error loading schedule: ' + escH(e.message);
+    ctr.innerHTML = '<div class="empty">' + msg + '</div>';
   }
 }
